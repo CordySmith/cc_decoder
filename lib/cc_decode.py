@@ -432,7 +432,7 @@ def decode_captions_debug(image_list, delete_image_after=True):
             image.unlink()
 
 
-def decode_image_list_to_srt(image_list, frames_per_second=29.976, delete_image_after=True):
+def decode_image_list_to_srt(image_list, frames_per_second=29.97, delete_image_after=True):
     """ Decode a passed list of images to a stream of SRT subtitles. Assumes Pop-on format closed captions
          image_list         - list of image file paths
          frames_per_second  - how many fps is the passed list of images
