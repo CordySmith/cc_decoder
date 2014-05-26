@@ -152,7 +152,6 @@ class ClosedCaptionFileDecoder(object):
         def next_file_name(file_num):
             return os.path.join(self.workingdir, (tempfile_name_structure % file_num))
 
-        # print(ffmpeg_cmd)
         with open(os.devnull, 'wb') as devnull:
             atexit.register(self._cleanup)
             self.fpid = subprocess.Popen(ffmpeg_cmd, stderr=devnull)

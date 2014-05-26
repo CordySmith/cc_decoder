@@ -2,7 +2,8 @@ from unittest import TestCase
 from lib.cc_decode import decode_byte_pair, decode_byte, BYTE1_LOCATIONS, find_and_decode_row, \
     compute_xds_packet_checksum, extract_closed_caption_bytes, _assert_len, decode_xds_string, decode_xds_minutes_hours, \
     describe_xds_packet, decode_captions_debug, decode_image_list_to_srt, decode_captions_to_scc, decode_xds_packets, \
-    decode_captions_raw, decode_row, decode_xds_content_advisory
+    decode_captions_raw, decode_row, decode_xds_content_advisory, BYTE2_LOCATIONS, SYNC_SIGNAL_LOCATIONS_HIGH, \
+    ALL_SPECIAL_CHARS, CC_TABLE
 
 __author__ = "Max Smith"
 __copyright__ = "Copyright 2014 Max Smith"
@@ -47,10 +48,69 @@ class MockImage(object):
     def unlink(self):
         pass
 
+
+class MockImageWithBytes(MockImage):
+    def __init__(self, val1, val2):
+        super().__init__(None)
+        self.val1 = val1
+        self.val2 = val2
+
+    def get_pixel_luma(self, x, y):
+        def in_range(x, loc_list, val=0, force_high=False):
+            for i, pixel_loc in enumerate(loc_list):
+                if pixel_loc - 5 < x < pixel_loc + 5:
+                    if val & (2 ** i) or force_high:
+                        return 100
+            return 0
+        return in_range(x, SYNC_SIGNAL_LOCATIONS_HIGH, force_high=True) or \
+                in_range(x, BYTE1_LOCATIONS, val=self.val1) or \
+                in_range(x, BYTE2_LOCATIONS, val=self.val2) or 0
+
+
 MOCK_IMAGE_SEQUENCE = [MockImage(0)] * 100
 
 
 class TestDecoding(TestCase):
+    def create_image_sequence(self, values):
+        img_seq = []
+        for val1, val2 in values:
+            img_seq.append(MockImageWithBytes(val1, val2))
+        return img_seq
+
+    def exercise_decoder(self, decoder_method, values):
+        img_seq = self.create_image_sequence(values)
+        decoder_method(img_seq)
+
+    def generate_sequences(self):
+        testcases = []
+
+        # All the special characters
+        testcase = [(0x14, 0x20)]
+        for sc in ALL_SPECIAL_CHARS:
+            testcase.append(sc)
+        testcase.append((0x14, 0x20))
+        testcases.append(testcase)
+
+        # All the basic characters
+        testcase = [(0x14, 0x20)]
+        for ch in CC_TABLE:
+            testcase.append((ch, ch))
+        testcase.append((0x14, 0x20))
+        testcases.append(testcase)
+        return testcases
+
+
+    def test_exercise_decoders(self):
+        decoder_methods = [decode_captions_debug, decode_image_list_to_srt, decode_captions_to_scc, decode_xds_packets,
+                           decode_captions_raw]
+
+        test_image_values = [[[0x80, 0x80], [0x80, 0x80], [0x80, 0x80]],
+                             [[0x20, 0x20], [0x20, 0x20], [0x20, 0x20]]]
+        test_image_values.extend(self.generate_sequences())
+        for test_case in test_image_values:
+            for decoder_method in decoder_methods:
+                self.exercise_decoder(decoder_method, test_case)
+
     def test_decode_byte_pair(self):
         testcases = [
             ((0, 0),       ''),
@@ -60,7 +120,6 @@ class TestDecoding(TestCase):
             ((0x19, 0x27), 'CC2 Mid-row: Cyan Underline'),
             ((0x24, 0x24), '$$'),
         ]
-
         for test in testcases:
             self.assertEqual(decode_byte_pair(*test[0]), test[1])
 
@@ -116,4 +175,4 @@ class TestDecoding(TestCase):
         decode_captions_raw(MOCK_IMAGE_SEQUENCE)
 
     def test_decode_xds_content_advisory(self):
-        decode_xds_content_advisory([[0x05,0x05]])
+        decode_xds_content_advisory([[0x05, 0x05]])

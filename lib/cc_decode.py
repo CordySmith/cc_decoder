@@ -372,10 +372,10 @@ def find_and_decode_row(img):
         for row in range(0, img.height+1):
             if is_cc_present(img, row_number=row):
                 lastRowFound = row
-                return decode_row(img, row_number=lastRowFound, offset=0)
+                return decode_row(img, row_number=lastRowFound)
             return None, None
     else:
-        return decode_row(img, row_number=lastRowFound, offset=0)
+        return decode_row(img, row_number=lastRowFound)
 
 
 def extract_closed_caption_bytes(img):
