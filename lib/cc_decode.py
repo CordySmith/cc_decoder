@@ -421,16 +421,18 @@ def decode_captions_debug(image_list, delete_image_after=True):
          image_list         - list (or generator) of image objects with a get_pixel_luma method
          delete_image_after - delete passed images after they've been processed """
     frame = 0
+    codes = []
     for image in image_list:
         code, control, b1, b2 = extract_closed_caption_bytes(image)
         if code is None:
             print('%i skip - no preamble' % frame)
         else:
             print('%i (%i,%i) - bytes: 0x%02x 0x%02x : %s' % (frame, lastPreambleOffset, lastRowFound, b1, b2, code))
+            codes.append([b1, b2])
         frame += 1
         if delete_image_after:
             image.unlink()
-
+    return codes
 
 def decode_image_list_to_srt(image_list, frames_per_second=29.97, delete_image_after=True):
     """ Decode a passed list of images to a stream of SRT subtitles. Assumes Pop-on format closed captions

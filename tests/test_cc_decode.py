@@ -79,34 +79,43 @@ class TestDecoding(TestCase):
 
     def exercise_decoder(self, decoder_method, values):
         img_seq = self.create_image_sequence(values)
-        decoder_method(img_seq)
+        retval = decoder_method(img_seq)
+        if retval is not None:
+            self.assertEqual(retval, values)
 
     def generate_sequences(self):
         testcases = []
 
         # All the special characters
-        testcase = [(0x14, 0x20)]
+        testcase = [[0x14, 0x20]]
         for sc in ALL_SPECIAL_CHARS:
-            testcase.append(sc)
-        testcase.append((0x14, 0x20))
+            testcase.append(list(sc))
+        testcase.append([0x14, 0x20])
         testcases.append(testcase)
 
         # All the basic characters
-        testcase = [(0x14, 0x20)]
+        testcase = [[0x14, 0x20]]
         for ch in CC_TABLE:
-            testcase.append((ch, ch))
-        testcase.append((0x14, 0x20))
+            testcase.append([ch, ch])
+        testcase.append([0x14, 0x20])
         testcases.append(testcase)
         return testcases
 
+    def xds_test_case(self):
+        return [[0x15, 0x2c], [0x05, 0x02], [0x43, 0x43], [0x54, 0x56], [0x0f, 0x3a], [0x01, 0x02],
+                [0x5d, 0x40], [0x40, 0x40], [0x0f, 0x51], [0x01, 0x03], [0x44, 0x75], [0x63, 0x6b],
+                [0x6d, 0x61], [0x01, 0x05], [0x48, 0x44], [0x0f, 0x5f], [0x02, 0x03], [0x6e, 0x00],
+                [0x0f, 0x2a], [0x05, 0x01], [0x43, 0x6f], [0x6d, 0x65], [0x64, 0x79], [0x20, 0x43],
+                [0x65, 0x6e], [0x74, 0x72], [0x61, 0x6c], [0x0f, 0x21], [0x01, 0x01], [0x40, 0x48],
+                [0x57, 0x45], [0x0f, 0x4b]]
 
     def test_exercise_decoders(self):
         decoder_methods = [decode_captions_debug, decode_image_list_to_srt, decode_captions_to_scc, decode_xds_packets,
                            decode_captions_raw]
 
-        test_image_values = [[[0x80, 0x80], [0x80, 0x80], [0x80, 0x80]],
-                             [[0x20, 0x20], [0x20, 0x20], [0x20, 0x20]]]
+        test_image_values = [[[0x20, 0x20], [0x20, 0x20], [0x20, 0x20]]]
         test_image_values.extend(self.generate_sequences())
+        test_image_values.append(self.xds_test_case())
         for test_case in test_image_values:
             for decoder_method in decoder_methods:
                 self.exercise_decoder(decoder_method, test_case)
