@@ -4,6 +4,7 @@ from lib.cc_decode import decode_byte_pair, decode_byte, BYTE1_LOCATIONS, find_a
     describe_xds_packet, decode_captions_debug, decode_image_list_to_srt, decode_captions_to_scc, decode_xds_packets, \
     decode_captions_raw, decode_row, decode_xds_content_advisory, BYTE2_LOCATIONS, SYNC_SIGNAL_LOCATIONS_HIGH, \
     ALL_SPECIAL_CHARS, CC_TABLE
+from random import randint
 
 __author__ = "Max Smith"
 __copyright__ = "Copyright 2014 Max Smith"
@@ -37,10 +38,10 @@ For more information, please refer to <http://unlicense.org/>
 
 
 class MockImage(object):
-    def __init__(self, val):
+    def __init__(self, val, h=480, w=720):
         self.val = val
-        self.height = 480
-        self.width = 720
+        self.height = h
+        self.width = w
 
     def get_pixel_luma(self, x, y):
         return self.val
@@ -49,11 +50,18 @@ class MockImage(object):
         pass
 
 
+class RandomMockImage(MockImage):
+    def get_pixel_luma(self, x, y):
+        return randint(0,255)
+
+
 class MockImageWithBytes(MockImage):
-    def __init__(self, val1, val2):
+    def __init__(self, val1, val2, h=480, w=720):
         super().__init__(None)
         self.val1 = val1
         self.val2 = val2
+        self.height = h
+        self.width = w
 
     def get_pixel_luma(self, x, y):
         def in_range(x, loc_list, val=0, force_high=False):
@@ -62,19 +70,24 @@ class MockImageWithBytes(MockImage):
                     if val & (2 ** i) or force_high:
                         return 100
             return 0
+        if x >= self.width or y >= self.height:
+            raise IndexError('Pixel outside expected range')
+
         return in_range(x, SYNC_SIGNAL_LOCATIONS_HIGH, force_high=True) or \
                 in_range(x, BYTE1_LOCATIONS, val=self.val1) or \
                 in_range(x, BYTE2_LOCATIONS, val=self.val2) or 0
 
 
-MOCK_IMAGE_SEQUENCE = [MockImage(0)] * 100
-
+MOCK_IMAGE_SEQUENCE = ([MockImage(0, h=1)] * 100) + ([MockImage(0, h=5)] * 100)
+RANDOM_MOCK_IMAGE_SEQUENCE = ([RandomMockImage(0, h=1)] * 1000) + \
+                             ([RandomMockImage(0, h=5)] * 1000) + \
+                             ([RandomMockImage(0, h=2)] * 1000)
 
 class TestDecoding(TestCase):
-    def create_image_sequence(self, values):
+    def create_image_sequence(self, values, image_height=1):
         img_seq = []
         for val1, val2 in values:
-            img_seq.append(MockImageWithBytes(val1, val2))
+            img_seq.append(MockImageWithBytes(val1, val2, h=image_height))
         return img_seq
 
     def exercise_decoder(self, decoder_method, values):
@@ -170,18 +183,23 @@ class TestDecoding(TestCase):
 
     def test_decode_xds_packets(self):
         decode_xds_packets(MOCK_IMAGE_SEQUENCE)
+        decode_xds_packets(RANDOM_MOCK_IMAGE_SEQUENCE)
 
     def test_decode_scc(self):
         decode_captions_to_scc(MOCK_IMAGE_SEQUENCE)
+        decode_captions_to_scc(RANDOM_MOCK_IMAGE_SEQUENCE)
 
     def test_decode_raw(self):
         decode_image_list_to_srt(MOCK_IMAGE_SEQUENCE)
+        decode_image_list_to_srt(RANDOM_MOCK_IMAGE_SEQUENCE)
 
     def test_decode_captions_debug(self):
         decode_captions_debug(MOCK_IMAGE_SEQUENCE)
+        decode_captions_debug(RANDOM_MOCK_IMAGE_SEQUENCE)
 
     def test_decode_captions_raw(self):
         decode_captions_raw(MOCK_IMAGE_SEQUENCE)
+        decode_captions_raw(RANDOM_MOCK_IMAGE_SEQUENCE)
 
     def test_decode_xds_content_advisory(self):
         decode_xds_content_advisory([[0x05, 0x05]])

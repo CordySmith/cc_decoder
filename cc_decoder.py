@@ -117,12 +117,14 @@ class ClosedCaptionFileDecoder(object):
                 'debug': decode_captions_debug,
                 'xds': decode_xds_packets}
 
-    def __init__(self, ffmpeg_path=None, temp_path=None, ccformat=None, lines=10):
+    def __init__(self, ffmpeg_path=None, temp_path=None, ccformat=None, start_line=0, lines=10, fixed_line=None):
         self.ffmpeg_path = ffmpeg_path or FFMPEG_LOC.get(sys.platform)
         self.temp_dir_path = temp_path or tempfile.gettempdir()
         self.format = ccformat or 'srt'
         self.lines = lines
+        self.fixed_line = fixed_line
         self.fpid = None
+        self.start_line = start_line
         self.workingdir = ''
 
     def _cleanup(self):
@@ -132,13 +134,14 @@ class ClosedCaptionFileDecoder(object):
         if self.workingdir:
             shutil.rmtree(self.workingdir)
 
-    def stream_decode_file_list(self, input_file, lines=5, image_wrapper=None):
+    def stream_decode_file_list(self, input_file, start_line=0, lines=5, image_wrapper=None):
         """ Returns a generator of image objects based on ffmpeg decoding the top 10 lines of the passed input_file.
             Run ffmpeg in a subprocess generating tiffs of the video frame until ffmpeg finishes and we run out of
             frames.
              input_file - input video file. Anything that ffmpeg understands
              tempdir    - where to write the tiffs to, ideally somewhere that can sustain high throughput, and has space
-             lines      - the number of lines to write to the tiff (default 10)
+             start_line - the line number to start capturing (default 0)
+             lines      - the number of lines to write to the tiff, counting from the start line (default 5)
              image_wrapper - the class to wrap the image file name with, default is PilImageWrapper """
 
         if not os.path.exists(self.ffmpeg_path):
@@ -146,8 +149,9 @@ class ClosedCaptionFileDecoder(object):
         image_wrapper = image_wrapper or PilImageWrapper
         self.workingdir = tempfile.mkdtemp(dir=self.temp_dir_path)
         tempfile_name_structure = 'ccdecode%07d.tif'
-        ffmpeg_cmd = '%s -i "%s" -vf "scale=720:ih, crop=iw:%d:0:0" -pix_fmt rgb24 -f image2 "%s"' % \
-                     (self.ffmpeg_path, input_file, lines, os.path.join(self.workingdir, tempfile_name_structure))
+        ffmpeg_cmd = '%s -i "%s" -vf "scale=720:ih, crop=iw:%d:0:%d" -pix_fmt rgb24 -f image2 "%s"' % \
+                     (self.ffmpeg_path, input_file, start_line + lines, start_line,
+                      os.path.join(self.workingdir, tempfile_name_structure))
 
         def next_file_name(file_num):
             return os.path.join(self.workingdir, (tempfile_name_structure % file_num))
@@ -172,7 +176,8 @@ class ClosedCaptionFileDecoder(object):
         self.workingdir = ''
 
     def decode(self, filename):
-        imagewrapper_generator = self.stream_decode_file_list(filename, lines=self.lines)
+        imagewrapper_generator = self.stream_decode_file_list(
+            filename, lines=self.lines, start_line=self.start_line)
 
         if self.format in self.DECODERS:
             self.DECODERS.get(self.format)(imagewrapper_generator)
@@ -189,12 +194,15 @@ def main():
     p.add_argument('--ffmpeg', default=ffmpeg, help='Path to a copy of the ffmpeg binary (default %s)' % ffmpeg)
     p.add_argument('--temp', default=tempdir, help='Path to temporary working area (default %s)' % tempdir)
     p.add_argument('--ccformat', default='srt', help='Output format xds, srt, scc or debug (default srt)')
-    p.add_argument('--lines', default=3, type=int, help='Number of lines to search for CC in the video (default 3)')
+    p.add_argument('--lines', default=3, type=int,
+                   help='Number of lines to search for CC in the video, starting at the start line (default 3)')
+    p.add_argument('--start_line', default=0, type=int, help='Start at a particular line 0=topmost line')
+
     args = p.parse_args()
 
     if args.videofile:
         decoder = ClosedCaptionFileDecoder(ffmpeg_path=args.ffmpeg, temp_path=args.temp, ccformat=args.ccformat,
-                                           lines=args.lines)
+                                           lines=args.lines, start_line=args.start_line)
         decoder.decode(args.videofile)
 
 main()

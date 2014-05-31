@@ -271,11 +271,11 @@ def memoize(f):
 class BaseImageWrapper(object):
     def get_pixel_luma(self, x, y):
         """ Return a pixels luma value normalized to the range 0 (black) to 255 (white) """
-        raise NotImplemented('get_pixel_luma must be overriden')
+        raise NotImplemented('get_pixel_luma must be overridden')
 
     def unlink(self):
         """ Delete the underlying file, and/or release the resource held """
-        raise NotImplemented('unlink must be overriden')
+        raise NotImplemented('unlink must be overridden')
 
 
 class FileImageWrapper(BaseImageWrapper):
@@ -365,22 +365,25 @@ def is_end_code(code):
     return 'End of Caption (flip memory)' in code or 'Erase Displayed Memory' in code
 
 
-def find_and_decode_row(img):
+def find_and_decode_row(img, fixed_line=None):
     """ Search for a closed caption row in the passed image, if one is present decode and return the bytes present """
     global lastRowFound
-    if not is_cc_present(img, row_number=lastRowFound):
-        for row in range(0, img.height+1):
+    if lastRowFound >= img.height:
+        lastRowFound = 0  # Protect against streams suddenly losing a few rows
+    row_target = fixed_line or lastRowFound
+    if not(is_cc_present(img, row_number=row_target) or fixed_line is not None):
+        for row in range(0, img.height-1):
             if is_cc_present(img, row_number=row):
                 lastRowFound = row
                 return decode_row(img, row_number=lastRowFound)
-            return None, None
+        return None, None
     else:
-        return decode_row(img, row_number=lastRowFound)
+        return decode_row(img, row_number=row_target)
 
 
-def extract_closed_caption_bytes(img):
+def extract_closed_caption_bytes(img, fixed_line=None):
     """ Returns a tuple of byte values from the passed image object that supports get_pixel_luma """
-    byte1, byte2 = find_and_decode_row(img)
+    byte1, byte2 = find_and_decode_row(img, fixed_line)
     if byte1 is None and byte2 is None:
         return None, False, None, None
     else:
@@ -389,15 +392,16 @@ def extract_closed_caption_bytes(img):
         return code, control, byte1, byte2
 
 
-def decode_captions_raw(image_list, merge_text=False, delete_image_after=True):
+def decode_captions_raw(image_list, fixed_line=None, merge_text=False, delete_image_after=True):
     """ Raw output, show the frame caption codes and frame numbers
          image_list         - list (or generator) of image objects with a get_pixel_luma method
          merge_text         - merge runs of text together and display in a block
-         delete_image_after - delete passed images after they've been processed """
+         delete_image_after - delete passed images after they've been processed
+         fixed_line         - check a particular line for cc-signal (and no others)"""
     buff = ''  # CC Buffer
     frame = 0
     for image in image_list:
-        code, control, _, _ = extract_closed_caption_bytes(image)
+        code, control, _, _ = extract_closed_caption_bytes(image, fixed_line)
         if code is None:
             print('%i skip - no preamble' % frame)
         else:
@@ -416,14 +420,15 @@ def decode_captions_raw(image_list, merge_text=False, delete_image_after=True):
             image.unlink()
 
 
-def decode_captions_debug(image_list, delete_image_after=True):
+def decode_captions_debug(image_list, fixed_line=None, delete_image_after=True):
     """ Debug output, show the frame caption codes and frame numbers
          image_list         - list (or generator) of image objects with a get_pixel_luma method
-         delete_image_after - delete passed images after they've been processed """
+         delete_image_after - delete passed images after they've been processed
+         fixed_line         - check a particular line for cc-signal (and no others)"""
     frame = 0
     codes = []
     for image in image_list:
-        code, control, b1, b2 = extract_closed_caption_bytes(image)
+        code, control, b1, b2 = extract_closed_caption_bytes(image, fixed_line)
         if code is None:
             print('%i skip - no preamble' % frame)
         else:
@@ -434,11 +439,12 @@ def decode_captions_debug(image_list, delete_image_after=True):
             image.unlink()
     return codes
 
-def decode_image_list_to_srt(image_list, frames_per_second=29.97, delete_image_after=True):
+def decode_image_list_to_srt(image_list, fixed_line=None, frames_per_second=29.97, delete_image_after=True):
     """ Decode a passed list of images to a stream of SRT subtitles. Assumes Pop-on format closed captions
          image_list         - list of image file paths
          frames_per_second  - how many fps is the passed list of images
-         delete_image_after - delete the image file after we have done processing it"""
+         delete_image_after - delete the image file after we have done processing it
+         fixed_line         - check a particular line for cc-signal (and no others)"""
 
     def timestamp(frame_number, fps):
         """Returns an SRT format timestamp"""
@@ -460,7 +466,7 @@ def decode_image_list_to_srt(image_list, frames_per_second=29.97, delete_image_a
     subtitle_start_frame = 0
 
     for image in image_list:
-        code, control, _, _ = extract_closed_caption_bytes(image)
+        code, control, _, _ = extract_closed_caption_bytes(image, fixed_line=fixed_line)
         if code is not None:
         # PROCESS
             if not control:
@@ -482,9 +488,12 @@ def decode_image_list_to_srt(image_list, frames_per_second=29.97, delete_image_a
             image.unlink()
 
 
-def decode_captions_to_scc(image_list, delete_image_after=True):
+def decode_captions_to_scc(image_list, fixed_line=None, delete_image_after=True):
     """ Decode a passed list of images to a stream of SCC subtitles. Assumes Pop-on format closed captions.
-        Assumes 29.97 frames per second drop time-code"""
+        Assumes 29.97 frames per second drop time-code
+         image_list         - list of image file paths
+         delete_image_after - delete the image file after we have done processing it
+         fixed_line         - check a particular line for cc-signal (and no others)"""
 
     def drop_frame_time_code(frames):
         frame_number = frames + 18 * (frames / 17982) + 2 * max(((frames % 17982) - 2) / 1798, 0)
@@ -503,7 +512,7 @@ def decode_captions_to_scc(image_list, delete_image_after=True):
     buff = ''
     prevcode = None
     for image in image_list:
-        code, control, byte1, byte2 = extract_closed_caption_bytes(image)
+        code, control, byte1, byte2 = extract_closed_caption_bytes(image, fixed_line=fixed_line)
         if code is None:
             if code is not None and not buff:
                 start_frame = frame  # Start of a sequence (not empty and no buffer yet)
@@ -669,14 +678,17 @@ def describe_xds_packet(packet_bytes):
     return 'XDS - Empty Packet'
 
 
-def decode_xds_packets(image_list, delete_image_after=True):
-    """ Decode a passed list of images to a stream of XDS packets. """
+def decode_xds_packets(image_list, fixed_line=None, delete_image_after=True):
+    """ Decode a passed list of images to a stream of XDS packets.
+         image_list         - list of image file paths
+         delete_image_after - delete the image file after we have done processing it
+         fixed_line         - check a particular line for cc-signal (and no others)"""
     frame = 0
     packetbuf = []
     gather_xds_bytes = False
     for image in image_list:
         frame += 1
-        code, control, b1, b2 = extract_closed_caption_bytes(image)
+        code, control, b1, b2 = extract_closed_caption_bytes(image, fixed_line)
         if code is not None:
             if not (b1 == 0 and b2 == 0):  # Stuffing, ignore and continue
                 if b1 <= 0x0e:  # Start of XDS packet'
