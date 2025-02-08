@@ -3,11 +3,11 @@ from lib.cc_decode import decode_byte_pair, decode_byte, BYTE1_LOCATIONS, find_a
     compute_xds_packet_checksum, extract_closed_caption_bytes, _assert_len, decode_xds_string, decode_xds_minutes_hours, \
     describe_xds_packet, decode_captions_debug, decode_image_list_to_srt, decode_captions_to_scc, decode_xds_packets, \
     decode_captions_raw, decode_row, decode_xds_content_advisory, BYTE2_LOCATIONS, SYNC_SIGNAL_LOCATIONS_HIGH, \
-    ALL_SPECIAL_CHARS, CC_TABLE
+    ALL_SPECIAL_CHARS, CC_TABLE, decode_xds_time_of_day
 from random import randint
 
 __author__ = "Max Smith"
-__copyright__ = "Copyright 2014 Max Smith"
+__copyright__ = "Copyright 2014-2025 Max Smith"
 __credits__ = ["Max Smith"]
 __license__ = """
 This is free and unencumbered software released into the public domain.
@@ -136,14 +136,14 @@ class TestDecoding(TestCase):
     def test_decode_byte_pair(self):
         testcases = [
             ((0, 0),       ''),
-            ((0xFF, 0xFF), '????(ff)????(ff)'),
+            ((0xFF, 0xFF), '?b1(ff)?b2(ff)'),
             ((0x14, 0x20), 'CC1 Resume Caption Loading'),
             ((0x20, 0x20), '  '),
             ((0x19, 0x27), 'CC2 Mid-row: Cyan Underline'),
             ((0x24, 0x24), '$$'),
         ]
         for test in testcases:
-            self.assertEqual(decode_byte_pair(*test[0]), test[1])
+            self.assertEqual(test[1], decode_byte_pair(*test[0]))
 
     def test_decode_byte(self):
         self.assertEquals(decode_byte(MockImage(100), BYTE1_LOCATIONS, 5, 1, 1), 127)
@@ -203,3 +203,7 @@ class TestDecoding(TestCase):
 
     def test_decode_xds_content_advisory(self):
         decode_xds_content_advisory([[0x05, 0x05]])
+
+    def test_decode_xds_timeofday(self):
+        self.assertEquals( 'TM 18:36S ZTA Dec 06 2002 Fri',  decode_xds_time_of_day([[0x64, 0x52], [0x46, 0x7c], [0x46, 0x4c], [0x8f,0xdf]]) )
+        self.assertEquals( 'XDS Time of day (UTC): TM 18:36S ZTA Dec 06 2002 Fri', describe_xds_packet([[0x07, 0x01], [0x64, 0x52], [0x46, 0x7c], [0x46, 0x4c], [0x8f,0xdf]]) )

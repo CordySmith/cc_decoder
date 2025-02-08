@@ -4,7 +4,7 @@
 ccDecoder is a Python Closed Caption Decoder/Extractor
 Presented by Max Smith and notonbluray.com
 
-Python 2.7+ and Python 3 compatible
+Python 3.7+ compatible
 
 Public domain / Unlicense per license section below
 But attribution is always appreciated where possible.
@@ -81,9 +81,11 @@ import subprocess
 import sys
 import tempfile
 import time
+import lib.cc_decode
 from lib.cc_decode import decode_image_list_to_srt, decode_captions_raw, decode_captions_to_scc, decode_captions_debug
-from lib.cc_decode import FileImageWrapper, decode_xds_packets
+from lib.cc_decode import FileImageWrapper, decode_xds_packets, decode_image_list_to_srt_roll
 
+# Defaults - won't work everywehere, that's why we allow it to be manually set
 FFMPEG_LOC = {
     'win32': os.path.join(os.environ["ProgramFiles"], 'ffmpeg', 'ffmpeg.exe'),
     'cygwin': os.path.join(os.environ["ProgramFiles"], 'ffmpeg', 'ffmpeg.exe'),
@@ -112,12 +114,13 @@ class PilImageWrapper(FileImageWrapper):
 
 class ClosedCaptionFileDecoder(object):
     DECODERS = {'srt': decode_image_list_to_srt,
+                'srtroll': decode_image_list_to_srt_roll,
                 'scc': decode_captions_to_scc,
                 'raw': decode_captions_raw,
                 'debug': decode_captions_debug,
                 'xds': decode_xds_packets}
 
-    def __init__(self, ffmpeg_path=None, temp_path=None, ccformat=None, start_line=0, lines=10, fixed_line=None):
+    def __init__(self, ffmpeg_path=None, temp_path=None, ccformat=None, start_line=0, lines=10, fixed_line=None, ccfilter=0):
         self.ffmpeg_path = ffmpeg_path or FFMPEG_LOC.get(sys.platform)
         self.temp_dir_path = temp_path or tempfile.gettempdir()
         self.format = ccformat or 'srt'
@@ -126,6 +129,7 @@ class ClosedCaptionFileDecoder(object):
         self.fpid = None
         self.start_line = start_line
         self.workingdir = ''
+        self.ccfilter=ccfilter
 
     def _cleanup(self):
         """ If we terminate unexpectedly, make sure we stop ffmpeg generating files """
@@ -180,7 +184,8 @@ class ClosedCaptionFileDecoder(object):
             filename, lines=self.lines, start_line=self.start_line)
 
         if self.format in self.DECODERS:
-            self.DECODERS.get(self.format)(imagewrapper_generator)
+            decoder_func = self.DECODERS.get(self.format)
+            decoder_func(imagewrapper_generator, ccfilter=self.ccfilter)
         else:
             raise RuntimeError('Unknown output format %s, try one of %s' % (format, self.DECODERS.keys()))
 
@@ -193,16 +198,27 @@ def main():
     p.add_argument('videofile', help='Input video file name')
     p.add_argument('--ffmpeg', default=ffmpeg, help='Path to a copy of the ffmpeg binary (default %s)' % ffmpeg)
     p.add_argument('--temp', default=tempdir, help='Path to temporary working area (default %s)' % tempdir)
-    p.add_argument('--ccformat', default='srt', help='Output format xds, srt, scc or debug (default srt)')
+    p.add_argument('--ccformat', default='srt', help='Output format xds, srt, scc, srtroll or debug (default srt)')
     p.add_argument('--lines', default=3, type=int,
-                   help='Number of lines to search for CC in the video, starting at the start line (default 3)')
+        help='Number of lines to search for CC in the video, starting at the start line (default 3)')
     p.add_argument('--start_line', default=0, type=int, help='Start at a particular line 0=topmost line')
+    p.add_argument('--ccfilter', default=0, type=int,
+        help='Filter for a particular closed caption stream 1=CC1, 2=CC2, etc. Only honored in srt mode (default 0=All)')
+    p.add_argument('--bitlevel', default=80, type=int,
+        help='The R+G+B/3 level that ccdecode reads as "1". 97 according to spec (50 IRE +/- 12 = 38 IRE),' +
+            'but we default to 80 (29 IRE) which is seems to work well, adjust lower if your source material is dim.')
 
     args = p.parse_args()
 
+    # Prime stdout for unicode UTF-8 output
+    sys.stdout.reconfigure(encoding='utf-8')
+
+    # Set video level
+    lib.cc_decode.LUMA_THRESHOLD = args.bitlevel
+
     if args.videofile:
         decoder = ClosedCaptionFileDecoder(ffmpeg_path=args.ffmpeg, temp_path=args.temp, ccformat=args.ccformat,
-                                           lines=args.lines, start_line=args.start_line)
+                                           lines=args.lines, start_line=args.start_line, ccfilter=args.ccfilter)
         decoder.decode(args.videofile)
 
 main()

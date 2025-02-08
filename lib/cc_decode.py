@@ -13,7 +13,7 @@ See spec: http://www.gpo.gov/fdsys/pkg/CFR-2007-title47-vol1/pdf/CFR-2007-title4
 """
 
 __author__ = "Max Smith"
-__copyright__ = "Copyright 2014 Max Smith"
+__copyright__ = "Copyright 2014-2025 Max Smith"
 __credits__ = ["Max Smith"]
 __license__ = """
 This is free and unencumbered software released into the public domain.
@@ -60,7 +60,9 @@ SYNC_SIGNAL_LOCATIONS_LOW = [14 + (i * 27) for i in range(0, 7)]   # Black
 PREAMBLE_SCAN_RANGE = range(-13, 30)
 
 # Bit value of 1 above this 'luma' level, 0 below
-LUMA_THRESHOLD = 80
+LUMA_THRESHOLD = 80  # Standard is 50IRE +/- 12
+                     # which is an 8 bit pixel level of around 97 - 99 depending on if 16-235 or 0-255 is used
+                     # set it a little lower here to be a little forgiving of analogue to digital conversion
 
 CC_TABLE = {
     0x00: '',  # Special - included here to clear a few things up
@@ -79,8 +81,85 @@ SPECIAL_CHARS_TABLE = {
     0x38: 'à', 0x39: ' ', 0x3A: 'è', 0x3B: 'â', 0x3C: 'ê', 0x3D: 'î', 0x3E: 'ô', 0x3F: 'û',
 }
 
+# Extended Western European Character Set
+
+EXTENDED_SPANISH_FRENCH = {
+    0x20: 'Á',
+    0x21: 'É',
+    0x22: 'Ó',
+    0x23: 'Ú',
+    0x24: 'Ü',
+    0x25: 'ü',
+    0x26: '´',
+    0x27: '¡',
+    0x28: '*',
+    0x29: "'",
+    0x2A: '─',
+    0x2B: '©',
+    0x2C: '℠',
+    0x2D: '•',
+    0x2E: '“',
+    0x2F: '”',
+    0x30: 'À',
+    0x31: 'Â',
+    0x32: 'Ç',
+    0x33: 'È',
+    0x34: 'Ê',
+    0x35: 'Ë',
+    0x36: 'ë',
+    0x37: 'Î',
+    0x38: 'Ï',
+    0x39: 'ï',
+    0x3A: 'Ô',
+    0x3B: 'Ù',
+    0x3C: 'ù',
+    0x3D: 'Û',
+    0x3E: '«',
+    0x3F: '»',
+}
+
+EXTENDED_PORTUGUESE_GERMAN_DANISH = {
+    0x20: 'Ã',
+    0x21: 'ã',
+    0x22: 'Í',
+    0x23: 'Ì',
+    0x24: 'ì',
+    0x25: 'Ò',
+    0x26: 'ò',
+    0x27: 'Õ',
+    0x28: 'õ',
+    0x29: "{",
+    0x2A: '}',
+    0x2B: '\\',
+    0x2C: '^',
+    0x2D: '_',
+    0x2E: '|',
+    0x2F: '~',
+    0x30: 'Ä',
+    0x31: 'ä',
+    0x32: 'Ö',
+    0x33: 'ö',
+    0x34: 'ß',
+    0x35: '¥',
+    0x36: '¤',
+    0x37: '|',
+    0x38: 'Å',
+    0x39: 'å',
+    0x3A: 'Ø',
+    0x3B: 'ø',
+    0x3C: '┌',
+    0x3D: '┐',
+    0x3E: '└',
+    0x3F: '┘',
+}
+
 CC1_SPECIAL_CHARS_TABLE = {(0x11, a): b for (a, b) in SPECIAL_CHARS_TABLE.items()}
 CC2_SPECIAL_CHARS_TABLE = {(0x19, a): b for (a, b) in SPECIAL_CHARS_TABLE.items()}
+CC1_SPECIAL_CHARS_TABLE.update( {(0x12, a): b for (a, b) in EXTENDED_SPANISH_FRENCH.items()} )
+CC2_SPECIAL_CHARS_TABLE.update( {(0x1A, a): b for (a, b) in EXTENDED_SPANISH_FRENCH.items()} )
+CC1_SPECIAL_CHARS_TABLE.update( {(0x13, a): b for (a, b) in EXTENDED_PORTUGUESE_GERMAN_DANISH.items()} )
+CC2_SPECIAL_CHARS_TABLE.update( {(0x1B, a): b for (a, b) in EXTENDED_PORTUGUESE_GERMAN_DANISH.items()} )
+
 # Achieving compatibility with Python2 and 3 makes us do strange things
 ALL_SPECIAL_CHARS = CC1_SPECIAL_CHARS_TABLE.copy()
 ALL_SPECIAL_CHARS.update(CC2_SPECIAL_CHARS_TABLE)
@@ -96,6 +175,44 @@ CONTROL_CODES = {
     (0x14, 0x2E): 'Erase Non-Displayed Memory', (0x14, 0x2F): 'End of Caption (flip memory)',
     (0x17, 0x21): 'Tab Offset 1',               (0x17, 0x22): 'Tab Offset 2',
     (0x17, 0x23): 'Tab Offset 3',
+}
+
+# This is an unofficial extension to the standard
+# See http://www.theneitherworld.com/mcpoodle/SCC_TOOLS/DOCS/CC_CODES.HTML
+# These
+BACKGROUND_COLOR_CODES = {
+    0x20: 'Background White',
+    0x21: 'Background Semi-Transparent White',  # Doc says A1.. but seems to be 21
+    0x22: 'Background Green',                   # ditto
+    0x23: 'Background Semi-Transparent White',
+    0x24: 'Background Blue',                    # ditto
+    0x25: 'Background Semi-Transparent Blue',
+    0x26: 'Background Cyan',
+    0x27: 'Background Semi-Transparent Cyan',   # ditto
+    0x28: 'Background Red',                     # ditto
+    0x29: 'Background Semi-Transparent Red',
+    0x2A: 'Background Yellow',                  # ditto
+    0x2B: 'Background Semi-Transparent Yellow', # ditto
+    0x2C: 'Background Magenta',
+    0x2D: 'Background Semi-Transparent Magenta',# ditto
+    0x2E: 'Background Black',                   # ditto
+    0x2F: 'Background Semi-Transparent Black',
+}
+
+CC1_BACKGROUND_CHARS = { (0x10,x): y for (x,y) in BACKGROUND_COLOR_CODES.items() }  # Also CC3
+CC2_BACKGROUND_CHARS = { (0x18,x): y for (x,y) in BACKGROUND_COLOR_CODES.items() }  # Also CC4
+
+CC1_BACKGROUND_CHARS.update( { (0x17, 0x2D) : 'Background transparent',
+                               (0x17, 0x2E) : 'Foreground Black ',
+                               (0x17, 0x2F) : 'Foreground Black Underline', } )  # Also CC3
+CC2_BACKGROUND_CHARS.update( { (0x1F, 0xAD) : 'Background transparent',
+                               (0x1F, 0x2E) : 'Foreground Black ',
+                               (0x1F, 0x2F) : 'Foreground Black Underline', } )  # Also CC4
+
+ROLL_UP_LEN = {
+    'CC1 Roll-Up Captions-2 Rows': 2,
+    'CC1 Roll-Up Captions-3 Rows': 3,
+    'CC1 Roll-Up Captions-4 Rows': 4,
 }
 
 MID_ROW_CODES = {
@@ -159,6 +276,8 @@ ALL_CC_CONTROL_CODES.update(CC1_CONTROL_CODES)
 ALL_CC_CONTROL_CODES.update(CC2_CONTROL_CODES)
 ALL_CC_CONTROL_CODES.update(CC1_MID_ROW_CODES)
 ALL_CC_CONTROL_CODES.update(CC2_MID_ROW_CODES)
+ALL_CC_CONTROL_CODES.update(CC1_BACKGROUND_CHARS)
+ALL_CC_CONTROL_CODES.update(CC2_BACKGROUND_CHARS)
 
 NO_PARITY_TO_ODD_PARITY = [
     0x80, 0x01, 0x02, 0x83, 0x04, 0x85, 0x86, 0x07, 0x08, 0x89, 0x8a, 0x0b, 0x8c, 0x0d, 0x0e, 0x8f,
@@ -250,6 +369,40 @@ XDS_CGMS_APS = [  # Macrovision, etc
     'Analogue protection: PSP On; 2 line Split Burst On',  'Analogue protection: PSP On; 4 line Split Burst On',
 ]
 
+XDS_DAY_OF_WEEK = {
+    0xc1 : 'Sun',
+    0x42 : 'Mon',
+    0x43 : 'Tue',
+    0x44 : 'Wed',
+    0x45 : 'Thu',
+    0x46 : 'Fri',
+    0x47 : 'Sat',
+}
+
+XDS_MONTH = {
+    0x1 : 'Jan',
+    0x2 : 'Feb',
+    0x3 : 'Mar',
+    0x4 : 'Apr',
+    0x5 : 'May',
+    0x6 : 'Jun',
+    0x7 : 'Jul',
+    0x8 : 'Aug',
+    0x9 : 'Sep',
+    0xa : 'Oct',
+    0xb : 'Nov',
+    0xc : 'Dec',
+    }
+
+CC_FILTER_TO_TXT = {
+    1: 'CC1',
+    2: 'CC2',
+    3: 'CC3',
+    4: 'CC4'
+}
+
+
+
 lastPreambleOffset = 0  # Global cache last preamble offset
 lastRowFound = 0  # Global, cache the last row we found cc's on
 
@@ -300,8 +453,8 @@ def decode_byte_pair(byte1, byte2):
         return ALL_CC_CONTROL_CODES.get(controlcode)
     if controlcode in ALL_SPECIAL_CHARS:
         return ALL_SPECIAL_CHARS.get(controlcode)
-    return '' + CC_TABLE.get(byte1, '????(%02x)' % byte1) + \
-           CC_TABLE.get(byte2, '????(%02x)' % byte2)
+    return '' + CC_TABLE.get(byte1, '?b1(%02x)' % (byte1)) + \
+           CC_TABLE.get(byte2, '?b2(%02x)' % (byte2))
 
 
 def decode_byte(image, bit_locations, sample_size, row_number, offset=0):
@@ -392,16 +545,17 @@ def extract_closed_caption_bytes(img, fixed_line=None):
         return code, control, byte1, byte2
 
 
-def decode_captions_raw(image_list, fixed_line=None, merge_text=False, delete_image_after=True):
+def decode_captions_raw(image_list, fixed_line=None, merge_text=False, delete_image_after=True, ccfilter=None):
     """ Raw output, show the frame caption codes and frame numbers
          image_list         - list (or generator) of image objects with a get_pixel_luma method
          merge_text         - merge runs of text together and display in a block
          delete_image_after - delete passed images after they've been processed
-         fixed_line         - check a particular line for cc-signal (and no others)"""
+         fixed_line         - check a particular line for cc-signal (and no others)
+         ccfilter           - ignored """
     buff = ''  # CC Buffer
     frame = 0
     for image in image_list:
-        code, control, _, _ = extract_closed_caption_bytes(image, fixed_line)
+        code, control, b1, b2 = extract_closed_caption_bytes(image, fixed_line)
         if code is None:
             print('%i skip - no preamble' % frame)
         else:
@@ -409,22 +563,24 @@ def decode_captions_raw(image_list, fixed_line=None, merge_text=False, delete_im
                 if merge_text:
                     buff += code
                 else:
-                    print('%i (%i,%i) - Text:%s' % (frame, lastPreambleOffset, lastRowFound, code))
+                    print('%i (%i,%i) - [%02x, %02x] - Text:%s' % (frame, lastPreambleOffset, lastRowFound, b1, b2, code))
             elif buff:
-                print('%i (%i,%i) - Text:%s' % (frame, lastPreambleOffset, lastRowFound, buff))
+                print('%i (%i,%i) - [%02x, %02x] - Text:%s' % (frame, lastPreambleOffset, lastRowFound, b1, b2, buff))
                 buff = ''
             if control:
-                print('%i (%i,%i) - %s' % (frame, lastPreambleOffset, lastRowFound, code))
+                print('%i (%i,%i) - [%02x, %02x] - %s' % (frame, lastPreambleOffset, lastRowFound, b1, b2, code))
         frame += 1
         if delete_image_after:
             image.unlink()
 
 
-def decode_captions_debug(image_list, fixed_line=None, delete_image_after=True):
+def decode_captions_debug(image_list, fixed_line=None, delete_image_after=True, ccfilter=None):
     """ Debug output, show the frame caption codes and frame numbers
          image_list         - list (or generator) of image objects with a get_pixel_luma method
          delete_image_after - delete passed images after they've been processed
-         fixed_line         - check a particular line for cc-signal (and no others)"""
+         fixed_line         - check a particular line for cc-signal (and no others)
+         ccfilter           - ignored
+         """
     frame = 0
     codes = []
     for image in image_list:
@@ -439,47 +595,117 @@ def decode_captions_debug(image_list, fixed_line=None, delete_image_after=True):
             image.unlink()
     return codes
 
-def decode_image_list_to_srt(image_list, fixed_line=None, frames_per_second=29.97, delete_image_after=True):
+
+def timestamp(frame_number, fps):
+    """ Returns an SRT format timestamp """
+    seconds = frame_number / fps
+    milliseconds = int((seconds - int(seconds)) * 1000)
+    hours = int(seconds / 3600)
+    minutes = int((seconds - 3600 * hours) / 60)
+    seconds_disp = seconds - (minutes * 60 + hours * 3600)
+    return '%02d:%02d:%02d,%03d' % (hours, minutes, seconds_disp, milliseconds)
+
+
+def dump_srt_caption(caption_text, start_frame, end_frame, fps, subtitle_count=None):
+    """ Display an SRT format closed caption """
+    if subtitle_count is not None:
+        print(subtitle_count)  # Required by: https://docs.fileformat.com/video/srt/
+    print('%s --> %s\n%s\n' % (timestamp(start_frame, fps), timestamp(end_frame, fps), caption_text))
+
+
+def decode_image_list_to_srt_roll(image_list, fixed_line=None, frames_per_second=29.97, delete_image_after=True, ccfilter=None):
+    """ Decode a passed list of images to a stream of SRT subtitles. Assumes Roll-up format closed captions
+         image_list         - list of image file paths
+         frames_per_second  - how many fps is the passed list of images
+         delete_image_after - delete the image file after we have done processing it
+         fixed_line         - check a particular line for cc-signal (and no others)
+         ccfilter           - ignored for now
+    """
+    buffer = ['', '', '', '']
+    buffer_len = 4
+    frame = 0
+    subtitle_start_frame = 0
+    subtitle_count = 1
+    for image in image_list:
+        code, control, _, _ = extract_closed_caption_bytes(image, fixed_line=fixed_line)
+        if code is not None:
+        # PROCESS:
+            if not control:
+                buffer[0] += code  # Assumed to be text
+            elif control and code != prevcode:
+                if code in ROLL_UP_LEN:
+                    subtitle_start_frame = frame
+                    if buffer_len != ROLL_UP_LEN[code]:
+                        buffer_len = ROLL_UP_LEN[code]
+                        buffer = [''] * buffer_len
+                    else:  #Probably the start of a comamnd sequence
+                        pass
+                elif code.endswith('Erase Displayed Memory'):
+                    dump_srt_caption('\n'.join(reversed(buffer)), subtitle_start_frame, frame, frames_per_second, subtitle_count)
+                    subtitle_count += 1
+                    subtitle_start_frame = frame
+                    buffer = [''] * buffer_len
+                elif code.endswith('Carriage Return'):
+                    dump_srt_caption('\n'.join(reversed(buffer)), subtitle_start_frame, frame, frames_per_second, subtitle_count)
+                    subtitle_start_frame = frame
+                    subtitle_count += 1
+                    # Roll-up subs
+                    if buffer_len >= 4:
+                        buffer[3] = buffer[2]
+                    if buffer_len >= 3:
+                        buffer[2] = buffer[1]
+                    buffer[1] = buffer[0]
+                    buffer[0] = ''
+
+        prevcode = code
+        frame += 1
+        if delete_image_after:
+            image.unlink()
+
+def match_code_filter(code, txt_to_match, cc_filter):
+    if txt_to_match in code:
+        if cc_filter:
+            return CC_FILTER_TO_TXT[cc_filter] in code
+        return True
+
+def decode_image_list_to_srt(image_list, fixed_line=None, frames_per_second=29.97, delete_image_after=True, ccfilter=None):
     """ Decode a passed list of images to a stream of SRT subtitles. Assumes Pop-on format closed captions
          image_list         - list of image file paths
          frames_per_second  - how many fps is the passed list of images
          delete_image_after - delete the image file after we have done processing it
-         fixed_line         - check a particular line for cc-signal (and no others)"""
-
-    def timestamp(frame_number, fps):
-        """Returns an SRT format timestamp"""
-        seconds = frame_number / fps
-        milliseconds = int((seconds - int(seconds)) * 1000)
-        hours = int(seconds / 3600)
-        minutes = int((seconds - 3600 * hours) / 60)
-        seconds_disp = seconds - (minutes * 60 + hours * 3600)
-        return '%02d:%02d:%02d,%03d' % (hours, minutes, seconds_disp, milliseconds)
-
-    def dump_srt_caption(caption_text, start_frame, end_frame, fps):
-        """Display an SRT format closed caption"""
-        print('%s --> %s\n%s\n' % (timestamp(start_frame, fps), timestamp(end_frame, fps), caption_text))
+         fixed_line         - check a particular line for cc-signal (and no others)
+         ccfilter           - filter for a particular caption stream CC[1], CC[2] - None or 0 means all captions"""
 
     offscreen_buffer = ''
     onscreen_buffer = ''
     prevcode = None
     frame = 0
     subtitle_start_frame = 0
+    subtitle_count = 1
+    accumulate = False  # Do not start collecting captions until we see RCL
 
     for image in image_list:
         code, control, _, _ = extract_closed_caption_bytes(image, fixed_line=fixed_line)
         if code is not None:
-        # PROCESS
-            if not control:
+            # PROCESS
+            if not control and accumulate:
                 offscreen_buffer += code  # Must be text
             elif control and code != prevcode:
-                if 'End of Caption' in code:
+                if 'Resume Caption Loading' in code:
+                    if match_code_filter(code, 'Resume Caption Loading', ccfilter):
+                        accumulate = True  # Start collection captions, as we match ccfilter
+                    else:
+                        accumulate = False  # We are interleaving with another caption stream
+                elif match_code_filter(code, 'End of Caption', ccfilter):
                     onscreen_buffer = offscreen_buffer
                     offscreen_buffer = ''
                     subtitle_start_frame = frame
-                elif onscreen_buffer and 'Erase Displayed Memory' in code:
-                    dump_srt_caption(onscreen_buffer, subtitle_start_frame, frame, frames_per_second)
+                    accumulate = False
+                elif accumulate and onscreen_buffer and match_code_filter(code, 'Erase Displayed Memory', ccfilter):
+                    dump_srt_caption(onscreen_buffer, subtitle_start_frame, frame, frames_per_second, subtitle_count)
+                    subtitle_count += 1
                     onscreen_buffer = ''
-                elif offscreen_buffer and offscreen_buffer[-1:] != '\n':
+                elif accumulate and offscreen_buffer and offscreen_buffer[-1:] != '\n':
                     offscreen_buffer += '\n'  # Some random command code. Assume it's just a newline
         # CLEANUP
         prevcode = code
@@ -488,12 +714,13 @@ def decode_image_list_to_srt(image_list, fixed_line=None, frames_per_second=29.9
             image.unlink()
 
 
-def decode_captions_to_scc(image_list, fixed_line=None, delete_image_after=True):
+def decode_captions_to_scc(image_list, fixed_line=None, delete_image_after=True, ccfilter=None):
     """ Decode a passed list of images to a stream of SCC subtitles. Assumes Pop-on format closed captions.
         Assumes 29.97 frames per second drop time-code
          image_list         - list of image file paths
          delete_image_after - delete the image file after we have done processing it
-         fixed_line         - check a particular line for cc-signal (and no others)"""
+         fixed_line         - check a particular line for cc-signal (and no others)
+         ccfilter           - ignored"""
 
     def drop_frame_time_code(frames):
         frame_number = frames + 18 * (frames / 17982) + 2 * max(((frames % 17982) - 2) / 1798, 0)
@@ -562,6 +789,23 @@ def decode_xds_minutes_hours(pbytes, short=False):
     return minb & 63, hourb & 31 if short else hourb & 63
 
 
+def decode_xds_time_of_day(packet_bytes):
+    """ Decode the Time of Day packets """
+    _assert_len(packet_bytes, 6)
+    pbytes = [b for bytepair in packet_bytes for b in bytepair]  # Flatten the nested list, to make it
+    dst = 'D' if (pbytes[1] & 0x20) else 'S'  # Daylight savinggs
+    zero_seconds = 'Z' if pbytes[3] & 0x20 else '_'
+    tape_delayed = 'T' if pbytes[3] & 0x10 else 'S'
+    leap_day = 'L' if pbytes[2] & 0x20 else 'A'
+    day_of_month = ( pbytes[2] - 0x40 )  # TODO: There is some possible interaction with leapday here, ignore for now
+    month = XDS_MONTH[pbytes[3] & 0xF]
+    day_of_week = XDS_DAY_OF_WEEK[pbytes[4]]
+    year = 1990 + ( pbytes[5] - 0x40 )
+    minutes = pbytes[0] - 0x40
+    hours = pbytes[1] & 0x1F
+    return f'TM {hours:0>2}:{minutes:0>2}{dst} {zero_seconds}{tape_delayed}{leap_day} {month} {day_of_month:0>2} {year} {day_of_week}'
+
+
 def decode_xds_content_advisory(pbytes):
     """ Decode content advisory packet, returning a string describing the rating """
     _assert_len(pbytes, 2)
@@ -594,8 +838,8 @@ def decode_xds_content_advisory(pbytes):
 def describe_xds_packet(packet_bytes):
     """ Given a set of bytes representing an XDS packet, describe it """
     if packet_bytes:
-        if not compute_xds_packet_checksum(packet_bytes):
-            return 'XDS Rejected Packet - Incorrect Checksum'
+        #if not compute_xds_packet_checksum(packet_bytes):
+        #    return 'XDS Rejected Packet - Incorrect Checksum'
         b1, b2 = packet_bytes.pop(0)
         if b1 <= 0x02 and b2 <= 0x03:  # TODO continues
             pref = ['Current', 'Next Program'][b1-1]
@@ -620,6 +864,7 @@ def describe_xds_packet(packet_bytes):
             elif b2 == 0x03:  # Program Name
                 return 'XDS %s Program Name: %s' % (pref, decode_xds_string(packet_bytes))
         if b1 == 0x01:
+
             if b2 == 0x04:  # Program Type
                 program_genre = ''
                 while packet_bytes:
@@ -654,9 +899,10 @@ def describe_xds_packet(packet_bytes):
                 return 'XDS Aspect Ratio: start line: %i end line: %i %s' \
                        % (22 + (startl & 63), 262 - (endl & 63), (anamorp & 1) and 'Anamorphic')
             elif b2 == 0x0c:  # Composite packet
-                return 'Composite packet 1'  # TODO - pending confirmation of the spec
+                return 'Composite packet 1 %d' % len(packet_bytes)  # TODO - pending confirmation of the spec
+
             elif b2 == 0x0d:
-                return 'Composite packet 2'  # TODO
+                return 'Composite packet 2 %d' % len(packet_bytes)  # TODO
             elif 0x10 <= b2 <= 0x17:  # Program description
                 return 'XDS Program description line: %i :%s ' % ((b2 - 0x0F), decode_xds_string(packet_bytes))
 
@@ -668,6 +914,12 @@ def describe_xds_packet(packet_bytes):
             if b2 == 0x03:  # Tape delay
                 minutes, hours = decode_xds_minutes_hours(packet_bytes, short=True)
                 return 'XDS Channel Tape Delay: %02i:%02i' % (hours, minutes)
+
+        if b1 == 0x07:  # Misc
+            if b2 == 0x01:  # Time of day
+                return f'XDS Time of day (UTC): {decode_xds_time_of_day(packet_bytes)}'
+
+
         if b1 == 0x09:  # Public service
             if b2 == 0x01:  # Weather advisory WRSAME format
                 return 'XDS Public Service - WRSAME message: %s' % str(packet_bytes)  # TODO, the spec is a bit vague
@@ -678,11 +930,12 @@ def describe_xds_packet(packet_bytes):
     return 'XDS - Empty Packet'
 
 
-def decode_xds_packets(image_list, fixed_line=None, delete_image_after=True):
+def decode_xds_packets(image_list, fixed_line=None, delete_image_after=True, ccfilter=None):
     """ Decode a passed list of images to a stream of XDS packets.
          image_list         - list of image file paths
          delete_image_after - delete the image file after we have done processing it
-         fixed_line         - check a particular line for cc-signal (and no others)"""
+         fixed_line         - check a particular line for cc-signal (and no others)
+         ccfilter           - ignored """
     frame = 0
     packetbuf = []
     gather_xds_bytes = False
