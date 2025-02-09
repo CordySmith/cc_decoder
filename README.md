@@ -59,8 +59,8 @@ access to it. The library has minimal dependencies, and may be useful
 for an embedded project.
 
 The command line interface has many dependencies including PIL (Pillow)
-and FFmpeg. Excellent builds of FFMpeg are available at
-http://ffmpeg.zeranoe.com/builds/
+and FFmpeg. Builds of FFMpeg are available at
+https://www.ffmpeg.org/download.html
 
 If you use the command line tool - it's worth providing it with access
 to a fast temporary area for writing data to, by default it will use
