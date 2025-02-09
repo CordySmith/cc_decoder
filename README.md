@@ -21,15 +21,24 @@ captions - please drop me a line via my website (notonbluray.com)
 Usage
 =====
 
-cc_decoder.py somevideofile.mpg >> somevideofile.srt
+`cc_decoder.py somevideofile.mpg >> somevideofile.srt`
+
  Extract subtitles in SRT format
-cc_decoder.py --ccformat scc somevideofile.mpg >> somevideofile.scc
+ 
+`cc_decoder.py --ccformat scc somevideofile.mpg >> somevideofile.scc`
+
  Extract subtitles in SCC format
-cc_decoder.py --ccformat xds somevideofile.mpg >> somevideofile.txt
+ 
+`cc_decoder.py --ccformat xds somevideofile.mpg >> somevideofile.txt`
+
  Extract XDS information
-cc_decoder.py --ccfilter 1 somevideofile.mpg >> somevideofile.txt
+ 
+`cc_decoder.py --ccfilter 1 somevideofile.mpg >> somevideofile.txt`
+
  Extract only CC1 subtitles in SRT format
-cc_decoder.py --bitlevel 60 dim_video_file.mkv >> dim_video_file.srt
+ 
+`cc_decoder.py --bitlevel 60 dim_video_file.mkv >> dim_video_file.srt`
+
  Extract all subtitles in SRT format, assuming a 0->1 transition level of 60.
 
 Performance
