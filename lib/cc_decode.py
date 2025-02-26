@@ -740,7 +740,7 @@ def decode_captions_to_scc(image_list, fixed_line=None, delete_image_after=True,
     prevcode = None
     for image in image_list:
         code, control, byte1, byte2 = extract_closed_caption_bytes(image, fixed_line=fixed_line)
-        if code is None:
+        if code is not None:
             if code is not None and not buff:
                 start_frame = frame  # Start of a sequence (not empty and no buffer yet)
             if code is not None or buff:
